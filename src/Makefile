@@ -4,6 +4,7 @@ CFLAGS = -std=c11 -D_XOPEN_SOURCE=700 -O2 -Wall -Wextra -Wformat=2
 LDFLAGS =
 LOADLIBES =
 LDLIBS =
+OBJDFLAG = -c
 
 .DEFAULT: all
 .PHONY: all
