@@ -59,7 +59,8 @@ int main(int argc, char *argv[])
         ssize_t n = recvfrom(sockfd, message, sizeof(message) - 1, 
                              0, (struct sockaddr *) &client, &len); 
         message[n] = '\0'; 
-        
+        fprintf(stdout, "Received: \n%s\n", message);
+        fflush(stdout);        
         
     }
 
