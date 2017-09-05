@@ -7,21 +7,24 @@
 #include <netinet/in.h>
 #include <ctype.h>
 #include <string.h>
-/*
- * Returns a random PORT number between 49152 and 65535
- */
 
-/***********
-Member Variables
-***********/
 
-/* MIN and MAX portnunbers */
+/* * * * * * * * * * * *
+    Member Variables
+ * * * * * * * * * * * */
+
+// MIN and MAX portnunbers 
 int MINPORT = 49152;
 int MAXPORT = 65535;
 
-//Structs for client and server
+// Structs for client and server
 struct sockaddr_in server, client;
 
+/* * * * * * * * * * * *
+        Functions
+ * * * * * * * * * * * * */
+
+// Returns a random PORT number between 49153 and 65535
 int randomChosenTID(){
     return (rand()%(MAXPORT-MINPORT))+MINPORT;
 }
@@ -34,14 +37,14 @@ int main(int argc, char *argv[])
  
     int port = randomChosenTID();
     int sockfd;
-    //printf("The port number is: %d", port);
+    // printf("The port number is: %d", port);
 	
-    //Create and bind an UDP socket
+    // Create and bind an UDP socket
     sockfd = socket(AF_INET, SOCK_DGRAM, 0); 
     memset(&server, 0, sizeof(server)); 
     server.sin_family = AF_INET; 
     
-    //Convert host byte order to network byte order
+    // Convert host byte order to network byte order
     server.sin_addr.s_addr = htonl(INADDR_ANY); 
     server.sin_port = htons(randomChosenTID()); 
     return 0;
