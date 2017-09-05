@@ -1,5 +1,7 @@
 /* your code goes here. */
-
+#include <time.h>
+#include <stdlib.h>
+#include <stdio.h>
 /*
  * Returns a random PORT number between 49152 and 65535
  */
@@ -16,7 +18,7 @@ int main(int argc, char *argv[])
 {
 	int port = randomChosenTID();
         int sockfd;
-        //print(port);
+	//printf("The port number is: %d", port);
 	return 0;
 }
 
