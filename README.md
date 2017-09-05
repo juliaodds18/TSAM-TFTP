@@ -1,2 +1,0 @@
-# TSAM-TFTP
-TFTP Server for T-409-TSAM, Fall 2017
