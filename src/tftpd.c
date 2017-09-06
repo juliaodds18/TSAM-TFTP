@@ -13,15 +13,19 @@
     Member Variables
  * * * * * * * * * * * */
 
-// MIN and MAX portnunbers 
-int MINPORT = 49152;
-int MAXPORT = 65535;
+// Macros for opcodes
+#define RRQ   1
+#define WRQ   2
+#define DATA  3
+#define ACK   4
+#define ERROR 5
 
 // Structs for client and server
 struct sockaddr_in server, client;
 
 // Character array for message; 
 char message[512]; 
+
 
 /* * * * * * * * * * * *
         Functions
@@ -60,14 +64,39 @@ int main(int argc, char *argv[])
                              0, (struct sockaddr *) &client, &len); 
         message[n] = '\0'; 
         fprintf(stdout, "Received: \n%s\n", message);
-        fflush(stdout);        
-        
+        fflush(stdout);       
+
+	unsigned int opcode = message[1]; 
+        fprintf(stdout, "Opcode: %u\n", opcode);
+        fflush(stdout);  
+
+        switch (opcode) {
+            case RRQ: 
+                fprintf(stdout, "hello from squtch case RRQ\n"); 
+		// Should we send ACK packet now? Establish connection??? 
+		break; 
+	
+	    case WRQ: 
+		// Write requests forbidden, send error message
+		break; 
+
+	    case DATA: 
+		// Illegal operation, cannot upload to server, send error message 
+		break; 
+
+	    case ACK: 
+		
+		break; 
+
+	    case ERROR: 
+
+		break; 
+
+        }	
     }
-
-
     return 0;
-}
 
+}
 // The output of the server should list which file is requested from which IP and portb
 // // the server should only send files that are inside the directory given as command line argument
 // // The RRQ and WRQ have a mode string
