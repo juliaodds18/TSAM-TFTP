@@ -7,6 +7,7 @@
 #include <netinet/in.h>
 #include <ctype.h>
 #include <string.h>
+#include <limits.h>
 
 
 /* * * * * * * * * * * *
@@ -24,7 +25,7 @@
 struct sockaddr_in server, client;
 
 // Character array for message; 
-char message[512]; 
+char message[516]; 
 
 
 /* * * * * * * * * * * *
@@ -42,8 +43,8 @@ int main(int argc, char *argv[])
     } 
 
     int port, modeptr, sockfd;  
-    char *mode, *filename, *directory; 
-
+    char *mode, *filename, *directory, *fileptr; 
+    char filepath[255], actualpath[PATH_MAX];
     // Get the port number from parameters
     sscanf(argv[1], "%d", &port);
     
@@ -88,7 +89,26 @@ int main(int argc, char *argv[])
 		filename = &message[2]; 
 		
 		//Get the path to the file the client is attempting to fetch 
-			
+		memset(filepath, 0, sizeof(filepath)); 		
+		strncpy(filepath, directory, strlen(directory));
+		strcat(filepath, "/"); 
+		strncat(filepath, filename, sizeof(filepath) - strlen(filename)); 
+
+		fprintf(stdout, "File path: %s\n", filepath); 
+		fflush(stdout); 
+ 		
+		fileptr = realpath(filepath, actualpath); 
+		
+		if (actualpath == NULL) {
+
+		    fprintf(stdout, "Hello from realpath == null");
+		    fflush(stdout); 
+		    break; 
+		}
+
+		fprintf(stdout, "SUCCESS"); 
+		fflush(stdout); 		
+ 
 		break; 
 	
 	    case WRQ: 
