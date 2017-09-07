@@ -37,13 +37,20 @@ int main(int argc, char *argv[])
     // If parameters are strictly less than one, there are no userful parameters 
     // and nothing to be done.
     if (argc < 1) {
+	fprintf(stdout, "Wrong number of parameters, must be: %s, <port_number>, <directory_name>", argv[0]); 
         return 0; 
     } 
 
-    int port;  
+    int port, modeptr, sockfd;  
+    char *mode, *filename, *directory; 
+
+    // Get the port number from parameters
     sscanf(argv[1], "%d", &port);
-    int sockfd;
-    // printf("The port number is: %d", port);
+    
+    //Get the name of the directory from parameters 
+    directory = argv[2]; 
+    fprintf(stdout, "Directory name: %s\n", directory); 
+    fflush(stdout); 
 	
     // Create and bind an UDP socket
     sockfd = socket(AF_INET, SOCK_DGRAM, 0); 
@@ -71,9 +78,17 @@ int main(int argc, char *argv[])
         fflush(stdout);  
 
         switch (opcode) {
-            case RRQ: 
-                fprintf(stdout, "hello from squtch case RRQ\n"); 
-		// Should we send ACK packet now? Establish connection??? 
+            case RRQ:  
+		// Should we send ACK packet now? Establish connection???
+
+		//Loop through message, in order to get to the string denoting mode  
+		for (modeptr = 2; message[modeptr] != '\0'; modeptr++) {}
+		modeptr++; 
+		mode = &message[modeptr];
+		filename = &message[2]; 
+		
+		//Get the path to the file the client is attempting to fetch 
+			
 		break; 
 	
 	    case WRQ: 
