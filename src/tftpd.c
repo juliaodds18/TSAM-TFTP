@@ -78,6 +78,8 @@ int main(int argc, char *argv[])
 	
 	    case WRQ: 
 		// Write requests forbidden, send error message
+		fprintf(stdout, "Illegal operation: Cannot write to server\n");
+		 
 		break; 
 
 	    case DATA: 
@@ -85,7 +87,7 @@ int main(int argc, char *argv[])
 		break; 
 
 	    case ACK: 
-		
+	        // Received ACK message pack 	
 		break; 
 
 	    case ERROR: 
