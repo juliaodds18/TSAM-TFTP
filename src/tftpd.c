@@ -31,6 +31,40 @@ char message[516];
 /* * * * * * * * * * * *
         Functions
  * * * * * * * * * * * * */
+void send_data(int sockfd, char *data)
+{	
+
+  
+}
+
+void read_data(char *filename, int sockfd)
+{
+    // Open the file that the client asked for
+    FILE *file;
+     fprintf(stdout, "filename in read_data is: %s", filename);
+    fflush(stdout);
+    // file = fopen("../data/example_data1", "r");
+    int done = 0;
+
+    // Buffer to send the data in the right size
+    char data[512];
+
+    // loops while there is something to read
+    while(done == 0) {
+	// Read from the file that the client asked for
+        fread(data, 1, sizeof(data), file);
+        if(sizeof(file) < 512) {
+	    done = 1;
+        }
+	for(int i = 0; i < 50; i++){
+	     fprintf(stdout, "%c", data[i]);
+	}
+       // fprintf(stdout, "The data_length is: %c\n", data[5]);
+	// send the data to the client
+	send_data(sockfd, data);
+    }
+
+}
 
 
 int main(int argc, char *argv[])
@@ -108,7 +142,7 @@ int main(int argc, char *argv[])
 
 		fprintf(stdout, "SUCCESS"); 
 		fflush(stdout); 		
- 
+ 	//	read_data(actualpath, sockfd);	
 		break; 
 	
 	    case WRQ: 
