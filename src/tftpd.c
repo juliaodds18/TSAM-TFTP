@@ -25,9 +25,9 @@
 struct sockaddr_in server, client;
 
 typedef struct {
-    int opcode;
-    int block;
-    char data[512];
+    uint16_t opcode;
+    uint16_t block;
+    uint8_t data[512];
 } sendData;
 
 // Character array for message; 
@@ -39,12 +39,8 @@ int blockNumber;
 /* * * *  * * * * * *
         Functions
  * * * * * * * * * * * * */
-void send_data(char *filename, int sockfd)
+void send_data(int sockfd)
 {
-    // Open the file that the client asked for
-    file = fopen(filename, "r");
-
-    int blockOfData;
     int dataSendSize;
     // loops while there is something to read
     // Increase the block number
@@ -57,11 +53,15 @@ void send_data(char *filename, int sockfd)
     //fprintf(stdout, "The size of the file is: %d\n", (int)file);
     dataSendSize = fread(d.data, 1, sizeof(d.data), file);
     //fprintf(stdout, "The size of the messagesToSend%d\n", (int)dataSendSize);
-   
+      
     int checkIfError = sendto(sockfd, &d, dataSendSize+4, 0, (struct sockaddr *) &client, (socklen_t) sizeof(client));
-    fprintf(stdout, "return from sendto is: %d\n", checkIfError); 
+    //fprintf(stdout, "return from sendto is: %d\n", checkIfError); 
     if(checkIfError < 0) {
         // send error
+    }
+    if (dataSendSize < 512) {
+	fclose(file);
+	file = 0;
     }
 
 }
@@ -77,7 +77,7 @@ int main(int argc, char *argv[])
     } 
 
     int port, modeptr, sockfd;  
-    char *mode, *filename, *directory, *fileptr; 
+    char *mode, *filename, *directory; 
     char filepath[255], actualpath[PATH_MAX];
     // Get the port number from parameters
     sscanf(argv[1], "%d", &port);
@@ -96,8 +96,11 @@ int main(int argc, char *argv[])
     // Convert host byte order to network byte order
     server.sin_addr.s_addr = htonl(INADDR_ANY); 
     server.sin_port = htons(port);
-    bind(sockfd, (struct sockaddr *) &server, (socklen_t) sizeof(server));  
-    
+   // bind(sockfd, (struct sockaddr *) &server, (socklen_t) sizeof(server));  
+    if (bind(sockfd, (struct sockaddr *) &server, (socklen_t) sizeof(server)) < 0) {
+	perror("Bind failed. Error");
+	return 1;
+    } 
     for (;;) {
 
         // Receive up to one byte less than declared, will be NULL-terminated later
@@ -113,7 +116,7 @@ int main(int argc, char *argv[])
         fflush(stdout);       
 
 	unsigned int opcode = message[1]; 
-        fprintf(stdout, "Opcode: %u\n", opcode);
+    //    fprintf(stdout, "Size of revfrom: %u\n", n);
         fflush(stdout);  
 
         switch (opcode) {
@@ -135,7 +138,7 @@ int main(int argc, char *argv[])
 		fprintf(stdout, "Mode: %s\n", mode); 
 		fflush(stdout); 
  		
-		fileptr = realpath(filepath, actualpath); 
+		realpath(filepath, actualpath); 
 		
 		if (actualpath == NULL) {
 
@@ -146,7 +149,8 @@ int main(int argc, char *argv[])
 
 		fprintf(stdout, "SUCCESS"); 
 		fflush(stdout); 		
- 		send_data(filepath, sockfd);	
+		file = fopen(filepath, "r");
+ 		send_data(sockfd);	
 		break; 
 	
 	    case WRQ: 
@@ -160,7 +164,7 @@ int main(int argc, char *argv[])
 		break; 
 
 	    case ACK: 
-		fprintf(stdout, "IM IN ACK");
+	//	fprintf(stdout, "IM IN ACK");
 	        // Received ACK message pack 	
 		break; 
 
