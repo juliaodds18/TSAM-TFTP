@@ -8,7 +8,7 @@
 #include <ctype.h>
 #include <string.h>
 #include <limits.h>
-
+#include <unistd.h>
 
 /* * * * * * * * * * * *
     Member Variables
@@ -25,44 +25,72 @@
 struct sockaddr_in server, client;
 
 // Character array for message; 
-char message[516]; 
-
+char message[516];
+int RETRY = 4;
+char messagesToSend[516];
 
 /* * * * * * * * * * * *
         Functions
  * * * * * * * * * * * * */
-void send_data(int sockfd, char *data)
-{	
-
-  
+int send_data(int sockfd)
+{	 
+    
+     // int n = send data
+     // if(n < 0) { return -1}
+     return -1;
 }
 
-void read_data(char *filename, int sockfd)
+void read_data(char *filename, int sockfd, socklen_t len)
 {
-    
     // Open the file that the client asked for
     FILE *file;
-    fprintf(stdout, "File path in read_data: %s\n", filename);
-    fflush(stdout);
     file = fopen(filename, "r");
-    int done = 0;
-    int block_number = 0;
-    // Buffer to send the data in the right size
-    char data[516];
 
+    int done = 0;
+    ssize_t checkIfError;
+    int blockNumber = 0;
+    int blockOfData;
     // loops while there is something to read
     while(done == 0) {
 	// Read from the file that the client asked for
-	block_number++;
-        read(filename, data, sizeof(data));
-        if(sizeof(file) < 512) {
-	    done = 1;
-        }
-	fprintf(stdout, "Data: %s\n", data); 
+	blockNumber++;
+        // Buffer starts reading in block 4 because of the header 
+        int dataSendSize = 4;       
+
+        while(dataSendSize < 516){
+	    blockOfData = fgetc(file);
+	    if(blockOfData == EOF) {
+		break;
+	    }
+	    messagesToSend[dataSendSize] = (char)blockOfData;
+	    dataSendSize++;
+	}
+	fprintf(stdout, "The size of the messagesToSend%d\n", dataSendSize);
 	
-        // fprintf(stdout, "The data_length is: %c\n", data[5]);
-	// send the data to the client
-	send_data(sockfd, data);
+        if(dataSendSize < 516) {
+	     done = 1;
+	}
+	// If there is not ACk send the data again, but only 4 times
+	for(int check = RETRY; check > 0; check--) {	
+	    checkIfError = sendto(sockfd, messagesToSend, dataSendSize, 0, (struct sockaddr *) &client, (socklen_t) sizeof(client));
+	
+	    // If send_data returns -1 the data are not send
+	    if(checkIfError < 0) {
+		// send error
+	    }
+	    // If refrom returns -1 there is no ACK, try to send again or kill the connection
+            checkIfError = recvfrom(sockfd, message, sizeof(message) - 1,
+                             0, (struct sockaddr *) &client, &len);
+	    fprintf(stdout, "Opcode: %u\n", message[1]);
+   	    // If checkIfError returns ACK go out of the for loop
+	    if(checkIfError <= 4) {
+		break;
+	    }
+	    else {
+	        // send error packet to client
+	    }
+	}	
+	
     }
 
 }
@@ -147,7 +175,7 @@ int main(int argc, char *argv[])
 
 		fprintf(stdout, "SUCCESS"); 
 		fflush(stdout); 		
- 		read_data(filepath, sockfd);	
+ 		read_data(filepath, sockfd, len);	
 		break; 
 	
 	    case WRQ: 
@@ -161,6 +189,7 @@ int main(int argc, char *argv[])
 		break; 
 
 	    case ACK: 
+		fprintf(stdout, "IM IN ACK");
 	        // Received ACK message pack 	
 		break; 
 
