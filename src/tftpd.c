@@ -39,19 +39,21 @@ void send_data(int sockfd, char *data)
 
 void read_data(char *filename, int sockfd)
 {
+    
     // Open the file that the client asked for
     FILE *file;
     fprintf(stdout, "File path in read_data: %s\n", filename);
     fflush(stdout);
     file = fopen(filename, "r");
     int done = 0;
-
+    int block_number = 0;
     // Buffer to send the data in the right size
-    char data[512];
+    char data[516];
 
     // loops while there is something to read
     while(done == 0) {
 	// Read from the file that the client asked for
+	block_number++;
         read(filename, data, sizeof(data));
         if(sizeof(file) < 512) {
 	    done = 1;
@@ -103,6 +105,10 @@ int main(int argc, char *argv[])
         socklen_t len = (socklen_t) sizeof(client); 
         ssize_t n = recvfrom(sockfd, message, sizeof(message) - 1, 
                              0, (struct sockaddr *) &client, &len); 
+        if(n < 0) {
+	    // send error messages !!! 
+	}
+
         message[n] = '\0'; 
         fprintf(stdout, "Received: \n%s\n", message);
         fflush(stdout);       
@@ -127,7 +133,7 @@ int main(int argc, char *argv[])
 		strcat(filepath, "/"); 
 		strncat(filepath, filename, sizeof(filepath) - strlen(filename)); 
 
-		fprintf(stdout, "File path: %s\n", filepath); 
+		fprintf(stdout, "Mode: %s\n", mode); 
 		fflush(stdout); 
  		
 		fileptr = realpath(filepath, actualpath); 
