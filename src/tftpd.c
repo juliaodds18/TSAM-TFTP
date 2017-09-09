@@ -36,10 +36,11 @@ int RETRY = 4;
 char messagesToSend[516];
 FILE *file;
 int blockNumber;
+int sockfd;
 /* * * *  * * * * * *
         Functions
  * * * * * * * * * * * * */
-void send_data(int sockfd)
+void send_data()
 {
     int dataSendSize;
     // loops while there is something to read
@@ -61,7 +62,7 @@ void send_data(int sockfd)
     }
     if (dataSendSize < 512) {
 	fclose(file);
-	file = 0;
+	file = NULL;
     }
 
 }
@@ -76,7 +77,7 @@ int main(int argc, char *argv[])
         return 0; 
     } 
 
-    int port, modeptr, sockfd;  
+    int port, modeptr;  
     char *mode, *filename, *directory; 
     char filepath[255], actualpath[PATH_MAX];
     // Get the port number from parameters
@@ -150,7 +151,7 @@ int main(int argc, char *argv[])
 		fprintf(stdout, "SUCCESS"); 
 		fflush(stdout); 		
 		file = fopen(filepath, "r");
- 		send_data(sockfd);	
+ 		send_data();	
 		break; 
 	
 	    case WRQ: 
@@ -163,7 +164,10 @@ int main(int argc, char *argv[])
 		// Illegal operation, cannot upload to server, send error message 
 		break; 
 
-	    case ACK: 
+	    case ACK:
+		if(file != NULL){ 
+		    send_data();
+		}
 	//	fprintf(stdout, "IM IN ACK");
 	        // Received ACK message pack 	
 		break; 
