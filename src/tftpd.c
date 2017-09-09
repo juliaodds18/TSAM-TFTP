@@ -1,4 +1,3 @@
-/* your code goes here. */
 #include <time.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -24,45 +23,79 @@
 // Structs for client and server
 struct sockaddr_in server, client;
 
+// Struct for sending data
 typedef struct {
     uint16_t opcode;
     uint16_t block;
     uint8_t data[512];
 } sendData;
 
-// Character array for message; 
+// Struct to sending error
+typedef struct {
+    uint16_t opcode;
+    uint16_t errorCode;
+    uint8_t errMsg[512];
+    uint8_t nullTerm;
+} sendError;
+
+// Enum for error codes
+typedef enum {
+    notDefined = 0,
+    fileNotFound,
+    accessViolation,
+    allocExceeded,
+    illegalOp,
+    unknownTID,
+    fileExists,
+    noSuchUser
+} errorCode;
+
+// Character array for message;
 char message[516];
-int RETRY = 4;
-char messagesToSend[516];
 FILE *file;
 int blockNumber;
 int sockfd;
+
 /* * * *  * * * * * *
         Functions
  * * * * * * * * * * * * */
+void send_error(char *errMsg, uint16_t errCode)
+{
+    if(file != NULL) {
+        fclose(file);
+        file = NULL;
+    }
+    sendError e;
+    e.opcode = htons(ERROR);
+    e.errorCode = htons(errCode);
+    int sizeOfMessage = sizeof(errMsg);
+    memcpy(e.errMsg, errMsg, sizeOfMessage);
+    e.nullTerm = 0;
+    sendto(sockfd, &e, sizeOfMessage+5, 0, (struct sockaddr *) &client, (socklen_t) sizeof(client));
+}
+
 void send_data()
 {
     int dataSendSize;
     // loops while there is something to read
-    // Increase the block number
-    blockNumber++;
+    
     sendData d;
     d.opcode = htons(DATA);
     d.block = htons(blockNumber);
 
-    // Read 512 instances of byte size  
+    // Read 512 instances of byte size
     //fprintf(stdout, "The size of the file is: %d\n", (int)file);
     dataSendSize = fread(d.data, 1, sizeof(d.data), file);
     //fprintf(stdout, "The size of the messagesToSend%d\n", (int)dataSendSize);
-      
+
     int checkIfError = sendto(sockfd, &d, dataSendSize+4, 0, (struct sockaddr *) &client, (socklen_t) sizeof(client));
-    //fprintf(stdout, "return from sendto is: %d\n", checkIfError); 
+    //fprintf(stdout, "return from sendto is: %d\n", checkIfError);
     if(checkIfError < 0) {
         // send error
     }
     if (dataSendSize < 512) {
-	fclose(file);
-	file = NULL;
+        fclose(file);
+        file = NULL;
     }
 
 }
@@ -70,113 +103,121 @@ void send_data()
 
 int main(int argc, char *argv[])
 {
-    // If parameters are strictly less than one, there are no userful parameters 
+    // If parameters are strictly less than one, there are no userful parameters
     // and nothing to be done.
     if (argc < 1) {
-	fprintf(stdout, "Wrong number of parameters, must be: %s, <port_number>, <directory_name>", argv[0]); 
-        return 0; 
-    } 
+        fprintf(stdout, "Wrong number of parameters, must be: %s, <port_number>, <directory_name>", argv[0]);
+        return 0;
+    }
 
-    int port, modeptr;  
-    char *mode, *filename, *directory; 
+    int port, modeptr;
+    char *mode, *filename, *directory;
     char filepath[255], actualpath[PATH_MAX];
     // Get the port number from parameters
     sscanf(argv[1], "%d", &port);
-    
-    //Get the name of the directory from parameters 
-    directory = argv[2]; 
-    fprintf(stdout, "Directory name: %s\n", directory); 
-    fflush(stdout); 
-	
+
+    //Get the name of the directory from parameters
+    directory = argv[2];
+    fprintf(stdout, "Directory name: %s\n", directory);
+    fflush(stdout);
+
     // Create and bind an UDP socket
-    sockfd = socket(AF_INET, SOCK_DGRAM, 0); 
-    memset(&server, 0, sizeof(server)); 
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    memset(&server, 0, sizeof(server));
     // Address family = IPv4, type of addresses that socket can communicate with
-    server.sin_family = AF_INET; 
-    
+    server.sin_family = AF_INET;
+
     // Convert host byte order to network byte order
-    server.sin_addr.s_addr = htonl(INADDR_ANY); 
+    server.sin_addr.s_addr = htonl(INADDR_ANY);
     server.sin_port = htons(port);
-   // bind(sockfd, (struct sockaddr *) &server, (socklen_t) sizeof(server));  
+   // bind(sockfd, (struct sockaddr *) &server, (socklen_t) sizeof(server));
     if (bind(sockfd, (struct sockaddr *) &server, (socklen_t) sizeof(server)) < 0) {
-	perror("Bind failed. Error");
-	return 1;
-    } 
+        send_error("The transefer ID does not match", unknownTID);
+    }
     for (;;) {
 
         // Receive up to one byte less than declared, will be NULL-terminated later
-        socklen_t len = (socklen_t) sizeof(client); 
-        ssize_t n = recvfrom(sockfd, message, sizeof(message) - 1, 
-                             0, (struct sockaddr *) &client, &len); 
+        socklen_t len = (socklen_t) sizeof(client);
+            ssize_t n = recvfrom(sockfd, message, sizeof(message) - 1,
+                             0, (struct sockaddr *) &client, &len);
         if(n < 0) {
-	    // send error messages !!! 
-	}
+            // send error messages !!!
+        }
 
-        message[n] = '\0'; 
-        // fprintf(stdout, "Received: \n%s\n", message);
-        fflush(stdout);       
+        message[n] = '\0';
 
-	unsigned int opcode = message[1]; 
-    //    fprintf(stdout, "Size of revfrom: %u\n", n);
-        fflush(stdout);  
+        unsigned int opcode = message[1];
+
 
         switch (opcode) {
-            case RRQ:  
-		// Should we send ACK packet now? Establish connection???
+            case RRQ:
+                // Should we send ACK packet now? Establish connection???
 
-		//Loop through message, in order to get to the string denoting mode  
-		for (modeptr = 2; message[modeptr] != '\0'; modeptr++) {}
-		modeptr++; 
+                //Loop through message, in order to get to the string denoting mode
+                for (modeptr = 2; message[modeptr] != '\0'; modeptr++) {}
+                modeptr++;
 		mode = &message[modeptr];
-		filename = &message[2]; 
-		
-		//Get the path to the file the client is attempting to fetch 
-		memset(filepath, 0, sizeof(filepath)); 		
-		strncpy(filepath, directory, strlen(directory));
-		strcat(filepath, "/"); 
-		strncat(filepath, filename, sizeof(filepath) - strlen(filename)); 
+                filename = &message[2];
+		fprintf(stdout, "Mode is: %s\n", mode);
+		if(strcmp(mode, "netascii") == 0 && strcmp(mode, "octat") == 0) {
+		    send_error("Illegal mode",illegalOp);
+                }
 
-		fprintf(stdout, "Mode: %s\n", mode); 
-		fflush(stdout); 
- 		
-		realpath(filepath, actualpath); 
-		
-		if (actualpath == NULL) {
+		//Get the path to the file the client is attempting to fetch
+                memset(filepath, 0, sizeof(filepath));
+                strncpy(filepath, directory, strlen(directory));
+                strcat(filepath, "/");
+                strncat(filepath, filename, sizeof(filepath) - strlen(filename));
 
-		    fprintf(stdout, "Hello from realpath == null");
-		    fflush(stdout); 
-		    break; 
-		}
+                realpath(filepath, actualpath);
 
-		fprintf(stdout, "SUCCESS"); 
-		fflush(stdout); 		
-		file = fopen(filepath, "r");
- 		send_data();	
-		break; 
+                // Check if the path is under the directory
+                if (actualpath == NULL) {
+                    send_error("File not found", fileNotFound);
+                    break;
+                }
+	 	int fourthId = client.sin_addr.s_addr >> 24;
+		int thirdId = (client.sin_addr.s_addr >> 16) & 0xff;
+		int secondId = (client.sin_addr.s_addr >> 8) & 0xff;
+		int firstId = client.sin_addr.s_addr & 0xff;
 	
-	    case WRQ: 
-		// Write requests forbidden, send error message
-		fprintf(stdout, "Illegal operation: Cannot write to server\n");
-		 
-		break; 
+		fprintf(stdout, "file \"%s\" requested from %d.%d.%d.%d:%d\n", filename, firstId, secondId, thirdId, fourthId, port);
+                fflush(stdout);
+		blockNumber = 1;
+		file = fopen(filepath, "r");
+                send_data();
+                break;
 
-	    case DATA: 
-		// Illegal operation, cannot upload to server, send error message 
-		break; 
+            case WRQ:
+                // Write requests forbidden, send error message
+                send_error("Write requests are forbidden", accessViolation);
 
-	    case ACK:
-		if(file != NULL){ 
-		    send_data();
-		}
-	//	fprintf(stdout, "IM IN ACK");
-	        // Received ACK message pack 	
-		break; 
+                break;
 
-	    case ERROR: 
+            case DATA:
+                // Illegal operation, cannot upload to server, send error message
+            send_error("Illegal operation, uploading is not allowed", accessViolation);
+                break;
 
-		break; 
+            case ACK:
+ 	        		
+                if(file != NULL){
+		    blockNumber++;
+                    send_data();
+                }
+                // Received ACK message pack
+                break;
 
-        }	
+            case ERROR:
+                fprintf(stdout, "Error message from client: %s\n", &message[4]);
+                if (file != NULL) { //Close datastream, if file is open.
+                    fclose(file);
+                    file = NULL;
+                }
+                break;
+            default:
+                send_error("Illegal opcode", notDefined);
+        }
     }
     return 0;
 
