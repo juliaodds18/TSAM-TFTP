@@ -12,6 +12,8 @@
 #include <string.h>
 #include <limits.h>
 #include <unistd.h>
+#include <signal.h>
+
 
 /* * * * * * * * * * * *
     Member Variables
@@ -107,17 +109,34 @@ void send_data()
         fclose(file);
         file = NULL;
     }
+}
 
+void signal_handler(int sig) {
+    if (sig == SIGINT) {
+	fprintf(stdout, "Caught SIGINT, shutting down ...\n"); 
+	fflush(stdout);
+
+	if (file != NULL) {
+	    fclose(file); 
+	    file = NULL; 
+	}
+	exit(0); 
+    }
 }
 
 
 int main(int argc, char *argv[])
 {
-    // If parameters are strictly less than one, there are no userful parameters
-    // and nothing to be done.
-    if (argc < 1) {
+    // If parameters are strictly less than one, there are no userful parameters and nothing to be done.
+    if (argc != 3) {
         fprintf(stdout, "Wrong number of parameters, must be: %s, <port_number>, <directory_name>", argv[0]);
         return 0;
+    }
+    
+    //Create a signal handler, in order to close the file in case of an interrupt 
+    if (signal(SIGINT, signal_handler) == SIG_ERR) {
+	fprintf(stdout, "Cannot catch SIGINT\n");
+	fflush(stdout); 
     }
 
     unsigned int port, modeptr;
@@ -127,7 +146,7 @@ int main(int argc, char *argv[])
     // Get the port number from parameters
     sscanf(argv[1], "%d", &port);
 
-    //Get the name of the directory from parameters
+    // Get the name of the directory from parameters
     directory = argv[2];
     fprintf(stdout, "Directory name: %s\n", directory);
     fflush(stdout);
@@ -170,9 +189,9 @@ int main(int argc, char *argv[])
 
         switch (opcode) {
             case RRQ:
-                // Should we send ACK packet now? Establish connection???
+       		// If the server receives a read request, find the path from where to get the file, read it and send it over to the client.
 
-                //Loop through message, in order to get to the string denoting mode
+                // Loop through message, in order to get to the string denoting mode
                 for (modeptr = 2; message[modeptr] != '\0'; modeptr++) {}
                 modeptr++;
 		mode = &message[modeptr];
@@ -192,7 +211,7 @@ int main(int argc, char *argv[])
                 strncat(filepath, filename, sizeof(filepath) - strlen(filename));
                 realpath(filepath, actualpath);
 
-                // Check if the path is under the directory, else send error message
+                // Check if the path is under the directory, if not, send error message
                 if (actualpath == NULL) {
                     send_error("File not found", fileNotFound);
                     break;
@@ -208,10 +227,10 @@ int main(int argc, char *argv[])
 		fprintf(stdout, "file \"%s\" requested from %d.%d.%d.%d:%d\n", filename, firstIp, secondIp, thirdIp, fourthIp, port);
                 fflush(stdout);
 
-		// set the block number for the first packet
+		// Set the block number for the first packet
 		blockNumber = 1;
 
-		// Open the file that the client asked  
+		// Open the file that the client requested
 		file = fopen(filepath, "r");
 		send_data();
                 break;
@@ -231,12 +250,12 @@ int main(int argc, char *argv[])
 		// Get the block number of the ack message
    	        ackBlockNumber = (((uint8_t*)message)[2] << 8) + ((uint8_t*)message)[3];		
 		
-		// Check if the ack block number and the last block number match if not, send the packet again
+		// Check if the ack block number and the last block number match. If not, send the packet again
 		if(ackBlockNumber != blockNumber) {
 		    sendto(sockfd, &d, dataSendSize+4, 0, (struct sockaddr *) &client, (socklen_t) sizeof(client));
 		}
 
-		// If the file is not empty send next  packet
+		// If the file is not empty send next packet
                 if(file != NULL){
 		    blockNumber++;
                     send_data();
@@ -264,6 +283,4 @@ int main(int argc, char *argv[])
     return 0;
 
 }
-// The output of the server should list which file is requested from which IP and portb
-// // the server should only send files that are inside the directory given as command line argument
-// // The RRQ and WRQ have a mode string
+
