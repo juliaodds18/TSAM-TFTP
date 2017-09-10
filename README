@@ -1,38 +1,55 @@
-Read-only Trivial File Transfer Protocol server 
-Implemented in c
+Read-Only Trivial File Transfer Protocol Server 
+Implemented in C
 
-About the server:
+About the server
 Receives a request of a file from a client and sends the file in 512 bytes packets
 to the client, if it exists.
-The client has to send acknowledge between packets else he won't get the next packet.
-The server can also receive error message and send error messages.
+The client has to send an acknowledgement between packets, else he won't get the next
+packet. The server can also send and receive error messagess
 
-Usage:
+Usage
 To start the server: ./src/tftpd PORT directory
-Send request from a client: tftp IP PORT -c get filename
+Send request from a client: tftp IPAddress PORT -c get filename
 
-The structure: 
+The structure
 There are two structs, one for sending packets to the client and one for sending 
-error message to the client. There is one enum for the error codes and macros for
-the opcodes. There are two functions send_data and send_error, they send packets 
+error messages to the client. There is one enum, for the error codes, and macros for
+the opcodes. There are two functions, send_data and send_error. They send packets 
 to the client. 
 
-Starting the server:
+Starting the server
 First there are some error checks:
- 1. If the parameters from the client are strictly less than one nothing can be
-    done, error messages are printed out.
- 2. If the bind function returns -1 the binding was not successful, that is because
-    the transfer ID does not mache and  error message are sent to the client. 
- 3. If the modes are not netascii or octet error message are sent to the client. 
-    The server only accepts netascii or octet. Netascii is modified 8-bit form of 
-    ascii and Octet allows 8-bit bytes transfer with the received file resulting 
-    byte-per-byte.
- 4. If the file that the client asked for is not in the servers directory
-    error messages are sent to the client.
- 5. If everything is ok the first packet is sent to the client. The data in the 
-    packet is max 512 bytes, there is also header including opcode and block number.
- 6. When the client sents acknowledgement back the next packet is sent.
- 7. If packet get lost the server will send it again. the acknowlege packet from the 
-    client includes the last block number and if it does not match the last block number
-    the packet got lost. 
- 8. After the last packet was sent the filestream will be closed. 
+ 1. If the parameters from the client are not three in total nothing can be
+    done, and an error message is printed. This is because in order to create
+    the server the port number is required, and in order to correctly locate the
+    requested file, the directory needs to be known. 
+ 2. If the bind function returns -1, the binding was not successful. That is because
+    the transfer ID does not match and an error message is sent to the client.
+ 3. If the mode is not either netascii or octet an error message is sent to the client. 
+    The server only accepts netascii or octet. 
+ 4. If the file that the client asked for is not in the server's directory,
+    an error message is sent to the client.
+ 5. If everything is intact, the first packet is sent to the client as soon as the 
+    first read request from the client is received. Each packet has a maximum data 
+    size of 512 bytes. Besides the data, there is also a header which includes the 
+    opcode and block number of the data packet.
+ 6. When the client receives a data packet, it sends an acknowledgement back and the 
+    next packet is sent.
+ 7. If a packet get lost, the server will send it again. The acknowlege packet from the 
+    client includes a block number and if it does not match the block number of the data 
+    packet last sent from the server, the packet got lost. 
+ 8. After the last packet was sent the filestream will be closed, along with the connection
+    between the client and the server.
+
+Explanation of how modes are handled
+There is no difference in how the netascii and octat modes are handled. The server does 
+not care about the format of the data being sent from the server. The only time that the
+server cares about the mode is when it receives data and needs to use it, which cannot be
+the case for this server, because uploading is illegal. The client, however, will take 
+care of translating the data according to the specified format.
+
+
+Explanation of how server handles attempts of uploading files
+In this server, uploading is not allowed and is considered an access violation. Every
+time that the client tries to upload a file, using a put-request, the server sends 
+back an ACCESS VIOLATION error, with error code 2. 
