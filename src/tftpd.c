@@ -1,7 +1,3 @@
-
-
-
-
 #include <time.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -65,7 +61,7 @@ int dataSendSize;
 sendData d;
 
 
-/* * * *  * * * * * *
+/* * * * * * * * * * * * *
         Functions
  * * * * * * * * * * * * */
 
@@ -92,7 +88,7 @@ void send_error(char *errMsg, uint16_t errCode)
 void send_data()
 {
     // Empty the struct 
-    sendData d = {0};
+    sendData d = { };
 
     // set the opcode and the block number of the packet
     d.opcode = htons(DATA);
@@ -114,7 +110,7 @@ void send_data()
 // A signal handler, in order to properly close any open file 
 void signal_handler(int sig) {
     if (sig == SIGINT) {
-	fprintf(stdout, "Caught SIGINT, shutting down ...\n"); 
+	fprintf(stdout, "Caught SIGINT, shutting down the connection\n"); 
 	fflush(stdout);
 
 	if (file != NULL) {
@@ -213,7 +209,7 @@ int main(int argc, char *argv[])
                 realpath(filepath, actualpath);
 
                 // Check if the path is under the directory, if not, send error message
-                if (actualpath == NULL) {
+                if (*actualpath == 0) {
                     send_error("File not found", fileNotFound);
                     break;
                 }
