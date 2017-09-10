@@ -111,6 +111,7 @@ void send_data()
     }
 }
 
+// A signal handler, in order to properly close any open file 
 void signal_handler(int sig) {
     if (sig == SIGINT) {
 	fprintf(stdout, "Caught SIGINT, shutting down ...\n"); 
