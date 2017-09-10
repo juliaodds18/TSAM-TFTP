@@ -5,7 +5,7 @@ About the server
 Receives a request of a file from a client and sends the file in 512 bytes packets
 to the client, if it exists.
 The client has to send an acknowledgement between packets, else he won't get the next
-packet. The server can also send and receive error messagess
+packet. The server can also send and receive error messages
 
 Usage
 To start the server: ./src/tftpd PORT directory
@@ -13,12 +13,13 @@ Send request from a client: tftp IPAddress PORT -c get filename
 
 The structure
 There are two structs, one for sending packets to the client and one for sending 
-error messages to the client. There is one enum, for the error codes, and macros for
-the opcodes. There are two functions, send_data and send_error. They send packets 
-to the client. 
+error messages to the client. There is one enum for the error codes and macros for
+the opcodes. There are three functions, send_data(), send_error() and signal_handler(). 
+The first two send packets to the client and the third close the filestrem if someone
+presses on ctrl-c. 
 
 Starting the server
-First there are some error checks:
+First there are some error checks
  1. If the parameters from the client are not three in total nothing can be
     done, and an error message is printed. This is because in order to create
     the server the port number is required, and in order to correctly locate the
