@@ -15,8 +15,8 @@ The structure
 There are two structs, one for sending packets to the client and one for sending 
 error messages to the client. There is one enum for the error codes and macros for
 the opcodes. There are three functions, send_data(), send_error() and signal_handler(). 
-The first two send packets to the client and the third close the filestrem if someone
-presses on ctrl-c. 
+The first two send packets to the client and the third closes the filestrem if the server
+receives an interrupt signal. 
 
 Starting the server
 First there are some error checks
