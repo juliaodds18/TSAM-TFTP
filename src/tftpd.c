@@ -137,7 +137,7 @@ int main(int argc, char *argv[])
     }
 
     unsigned int port, modeptr;
-    char *mode, *filename, *directory;
+    char *mode, *filename, *directory, *checkFile;
     char filepath[255], actualpath[PATH_MAX];
     
     // Get the port number from parameters
@@ -206,10 +206,10 @@ int main(int argc, char *argv[])
                 strncpy(filepath, directory, strlen(directory));
                 strcat(filepath, "/");
                 strncat(filepath, filename, sizeof(filepath) - strlen(filename));
-                realpath(filepath, actualpath);
+                checkFile = realpath(filepath, actualpath);
 
                 // Check if the path is under the directory, if not, send error message
-                if (*actualpath == 0) {
+                if (checkFile == NULL) {
                     send_error("File not found", fileNotFound);
                     break;
                 }
