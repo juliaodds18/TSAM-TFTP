@@ -1,3 +1,7 @@
+
+
+
+
 #include <time.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -50,44 +54,55 @@ typedef enum {
     noSuchUser
 } errorCode;
 
-// Character array for message;
+// Variables 
 char message[516];
 FILE *file;
 unsigned int blockNumber;
 unsigned int sockfd;
 int dataSendSize;
 sendData d;
+
+
 /* * * *  * * * * * *
         Functions
  * * * * * * * * * * * * */
+
 void send_error(char *errMsg, uint16_t errCode)
 {
+    // If the filestream is open, close it 
     if(file != NULL) {
         fclose(file);
         file = NULL;
     }
+
+    // set the opcode, the error code, the error message and the null byte in the end
     sendError e;
     e.opcode = htons(ERROR);
     e.errorCode = htons(errCode);
     unsigned int sizeOfMessage = sizeof(errMsg);
     memcpy(e.errMsg, errMsg, sizeOfMessage);
     e.nullTerm = 0;
+
+    // Send the error message to the client
     sendto(sockfd, &e, sizeOfMessage+5, 0, (struct sockaddr *) &client, (socklen_t) sizeof(client));
 }
 
 void send_data()
 {
-    // sendData d;
+    // Empty the struct 
     sendData d = {0};
+
+    // set the opcode and the block number of the packet
     d.opcode = htons(DATA);
     d.block = htons(blockNumber);
+
+    // Read max 512 bytes from the file
     dataSendSize = fread(d.data, 1, sizeof(d.data), file);
    
-
-//fprintf(stdout, "The size of the messagesToSend%d\n", (int)dataSendSize);
-
+    // Send the packet to the client
     sendto(sockfd, &d, dataSendSize+4, 0, (struct sockaddr *) &client, (socklen_t) sizeof(client));
    
+    // Check if it was the last packet, close the filestream
     if (dataSendSize < 512) {
         fclose(file);
         file = NULL;
@@ -108,6 +123,7 @@ int main(int argc, char *argv[])
     unsigned int port, modeptr;
     char *mode, *filename, *directory;
     char filepath[255], actualpath[PATH_MAX];
+    
     // Get the port number from parameters
     sscanf(argv[1], "%d", &port);
 
@@ -119,28 +135,36 @@ int main(int argc, char *argv[])
     // Create and bind an UDP socket
     sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     memset(&server, 0, sizeof(server));
+    
     // Address family = IPv4, type of addresses that socket can communicate with
     server.sin_family = AF_INET;
 
     // Convert host byte order to network byte order
     server.sin_addr.s_addr = htonl(INADDR_ANY);
     server.sin_port = htons(port);
-   // bind(sockfd, (struct sockaddr *) &server, (socklen_t) sizeof(server));
+ 
+    // Check if the bindin is successful, else send error message to client
     if (bind(sockfd, (struct sockaddr *) &server, (socklen_t) sizeof(server)) < 0) {
         send_error("The transefer ID does not match", unknownTID);
     }
+
+    
     for (;;) {
 
         // Receive up to one byte less than declared, will be NULL-terminated later
         socklen_t len = (socklen_t) sizeof(client);
-            ssize_t n = recvfrom(sockfd, message, sizeof(message) - 1,
+    
+	ssize_t n = recvfrom(sockfd, message, sizeof(message) - 1,
                              0, (struct sockaddr *) &client, &len);
-        if(n < 0) {
-            // send error messages !!!
+        
+	// Check if the revfrom was successful
+	if(n < 0) {
+	    send_error("Could not receive messages", notDefined);    	    
         }
 
         message[n] = '\0';
 
+	 
         unsigned int opcode = message[1];
 	unsigned int ackBlockNumber;
 
@@ -152,8 +176,11 @@ int main(int argc, char *argv[])
                 for (modeptr = 2; message[modeptr] != '\0'; modeptr++) {}
                 modeptr++;
 		mode = &message[modeptr];
+
+		// Get the filename the client is attempting to fetch
                 filename = &message[2];
-		fprintf(stdout, "Mode is: %s\n", mode);
+
+		// Check if the mode is right, else send an error message 
 		if(strcmp(mode, "netascii") == 0 && strcmp(mode, "octat") == 0) {
 		    send_error("Illegal mode",illegalOp);
                 }
@@ -163,22 +190,28 @@ int main(int argc, char *argv[])
                 strncpy(filepath, directory, strlen(directory));
                 strcat(filepath, "/");
                 strncat(filepath, filename, sizeof(filepath) - strlen(filename));
-
                 realpath(filepath, actualpath);
 
-                // Check if the path is under the directory
+                // Check if the path is under the directory, else send error message
                 if (actualpath == NULL) {
                     send_error("File not found", fileNotFound);
                     break;
                 }
-	 	int fourthId = client.sin_addr.s_addr >> 24;
-		int thirdId = (client.sin_addr.s_addr >> 16) & 0xff;
-		int secondId = (client.sin_addr.s_addr >> 8) & 0xff;
-		int firstId = client.sin_addr.s_addr & 0xff;
+
+		// Get the IP from the client
+	 	int fourthIp = client.sin_addr.s_addr >> 24;
+		int thirdIp = (client.sin_addr.s_addr >> 16) & 0xff;
+		int secondIp = (client.sin_addr.s_addr >> 8) & 0xff;
+		int firstIp = client.sin_addr.s_addr & 0xff;
 	
-		fprintf(stdout, "file \"%s\" requested from %d.%d.%d.%d:%d\n", filename, firstId, secondId, thirdId, fourthId, port);
+		// Print the information from the client
+		fprintf(stdout, "file \"%s\" requested from %d.%d.%d.%d:%d\n", filename, firstIp, secondIp, thirdIp, fourthIp, port);
                 fflush(stdout);
+
+		// set the block number for the first packet
 		blockNumber = 1;
+
+		// Open the file that the client asked  
 		file = fopen(filepath, "r");
 		send_data();
                 break;
@@ -195,12 +228,14 @@ int main(int argc, char *argv[])
                 break;
 
             case ACK:
-		// Get the block number of the ack
+		// Get the block number of the ack message
    	        ackBlockNumber = (((uint8_t*)message)[2] << 8) + ((uint8_t*)message)[3];		
-		// If the last ack block number doesn't mach the last block number, send the packet again
+		
+		// Check if the ack block number and the last block number match if not, send the packet again
 		if(ackBlockNumber != blockNumber) {
 		    sendto(sockfd, &d, dataSendSize+4, 0, (struct sockaddr *) &client, (socklen_t) sizeof(client));
 		}
+
 		// If the file is not empty send next  packet
                 if(file != NULL){
 		    blockNumber++;
@@ -210,13 +245,19 @@ int main(int argc, char *argv[])
                 break;
 
             case ERROR:
+		// Print the error message from the clinet
                 fprintf(stdout, "Error message from client: %s\n", &message[4]);
-                if (file != NULL) { //Close datastream, if file is open.
+		fflush(stdout);
+
+		// Close the file stream if it is still open 
+                if (file != NULL) { 
                     fclose(file);
                     file = NULL;
                 }
                 break;
+
             default:
+		// Send error messaeg if the opcode is wrong
                 send_error("Illegal opcode", notDefined);
         }
     }
