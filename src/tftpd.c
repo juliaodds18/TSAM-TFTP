@@ -65,7 +65,7 @@ sendData d;
         Functions
  * * * * * * * * * * * * */
 
-void send_error(char *errMsg, uint16_t errCode)
+void send_error(char errMsg[], uint16_t errCode)
 {
     // If the filestream is open, close it 
     if(file != NULL) {
@@ -88,7 +88,7 @@ void send_error(char *errMsg, uint16_t errCode)
 void send_data()
 {
     // Empty the struct 
-    sendData d = { };
+    sendData d = {0};
 
     // set the opcode and the block number of the packet
     d.opcode = htons(DATA);
