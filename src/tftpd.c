@@ -53,9 +53,10 @@ typedef enum {
 // Character array for message;
 char message[516];
 FILE *file;
-int blockNumber;
-int sockfd;
-
+unsigned int blockNumber;
+unsigned int sockfd;
+int dataSendSize;
+sendData d;
 /* * * *  * * * * * *
         Functions
  * * * * * * * * * * * * */
@@ -68,7 +69,7 @@ void send_error(char *errMsg, uint16_t errCode)
     sendError e;
     e.opcode = htons(ERROR);
     e.errorCode = htons(errCode);
-    int sizeOfMessage = sizeof(errMsg);
+    unsigned int sizeOfMessage = sizeof(errMsg);
     memcpy(e.errMsg, errMsg, sizeOfMessage);
     e.nullTerm = 0;
     sendto(sockfd, &e, sizeOfMessage+5, 0, (struct sockaddr *) &client, (socklen_t) sizeof(client));
@@ -76,23 +77,17 @@ void send_error(char *errMsg, uint16_t errCode)
 
 void send_data()
 {
-    int dataSendSize;
-    // loops while there is something to read
-    
-    sendData d;
+    // sendData d;
+    sendData d = {0};
     d.opcode = htons(DATA);
     d.block = htons(blockNumber);
-
-    // Read 512 instances of byte size
-    //fprintf(stdout, "The size of the file is: %d\n", (int)file);
     dataSendSize = fread(d.data, 1, sizeof(d.data), file);
-    //fprintf(stdout, "The size of the messagesToSend%d\n", (int)dataSendSize);
+   
 
-    int checkIfError = sendto(sockfd, &d, dataSendSize+4, 0, (struct sockaddr *) &client, (socklen_t) sizeof(client));
-    //fprintf(stdout, "return from sendto is: %d\n", checkIfError);
-    if(checkIfError < 0) {
-        // send error
-    }
+//fprintf(stdout, "The size of the messagesToSend%d\n", (int)dataSendSize);
+
+    sendto(sockfd, &d, dataSendSize+4, 0, (struct sockaddr *) &client, (socklen_t) sizeof(client));
+   
     if (dataSendSize < 512) {
         fclose(file);
         file = NULL;
@@ -110,7 +105,7 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    int port, modeptr;
+    unsigned int port, modeptr;
     char *mode, *filename, *directory;
     char filepath[255], actualpath[PATH_MAX];
     // Get the port number from parameters
@@ -147,7 +142,7 @@ int main(int argc, char *argv[])
         message[n] = '\0';
 
         unsigned int opcode = message[1];
-
+	unsigned int ackBlockNumber;
 
         switch (opcode) {
             case RRQ:
@@ -185,7 +180,7 @@ int main(int argc, char *argv[])
                 fflush(stdout);
 		blockNumber = 1;
 		file = fopen(filepath, "r");
-                send_data();
+		send_data();
                 break;
 
             case WRQ:
@@ -196,16 +191,22 @@ int main(int argc, char *argv[])
 
             case DATA:
                 // Illegal operation, cannot upload to server, send error message
-            send_error("Illegal operation, uploading is not allowed", accessViolation);
+            	send_error("Illegal operation, uploading is not allowed", accessViolation);
                 break;
 
             case ACK:
- 	        		
+		// Get the block number of the ack
+   	        ackBlockNumber = (((uint8_t*)message)[2] << 8) + ((uint8_t*)message)[3];		
+		// If the last ack block number doesn't mach the last block number, send the packet again
+		if(ackBlockNumber != blockNumber) {
+		    sendto(sockfd, &d, dataSendSize+4, 0, (struct sockaddr *) &client, (socklen_t) sizeof(client));
+		}
+		// If the file is not empty send next  packet
                 if(file != NULL){
 		    blockNumber++;
                     send_data();
                 }
-                // Received ACK message pack
+                
                 break;
 
             case ERROR:
